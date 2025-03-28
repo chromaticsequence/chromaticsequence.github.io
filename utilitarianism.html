@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utilitarianism Calculator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            max-width: 900px; /* Limit width for better readability */
+            margin: auto;     /* Center the container */
+        }
+        h1, h2, h3 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        label {
+            display: inline-block; /* Changed from block for better alignment */
+            margin-bottom: 5px;
+            font-weight: bold;
+            min-width: 150px; /* Align labels */
+        }
+        input[type="number"],
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px; /* Space between input and button */
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
+        #calculateBtn {
+            background-color: #007bff;
+            margin-top: 15px;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1em;
+        }
+        #calculateBtn:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            table-layout: fixed; /* Better column width control */
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 6px; /* Reduced padding */
+            text-align: center;
+            word-wrap: break-word; /* Wrap long action/state names */
+        }
+        th {
+            background-color: #f2f2f2;
+            font-size: 0.9em;
+        }
+        td input[type="number"] {
+            width: 80%; /* Make input fields fill cell better */
+            box-sizing: border-box; /* Include padding/border in width */
+            padding: 4px; /* Smaller padding in cells */
+            font-size: 0.9em;
+        }
+        .hidden {
+            display: none;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #e9f7ef;
+            border-radius: 4px;
+        }
+        #results h3 {
+            margin-top: 0;
+            color: #155724; /* Dark green for results header */
+        }
+        #optimalActionDisplay {
+            font-weight: bold;
+            font-size: 1.1em;
+            color: #d9534f; /* Red for optimal action */
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .info {
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 5px;
+        }
+        .stochastic-action-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+        }
+
+        /* Mode selection styling */
+        .mode-selector {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .mode-selector label {
+            margin: 0 10px;
+            font-weight: normal;
+        }
+         .mode-selector input[type="radio"] {
+             margin-right: 5px;
+         }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Utilitarianism Calculator</h1>
+
+    <div class="input-group mode-selector">
+        <label><input type="radio" name="mode" value="deterministic" checked onchange="switchMode()"> Deterministic</label>
+        <label><input type="radio" name="mode" value="stochastic" onchange="switchMode()"> Stochastic</label>
+    </div>
+
+    <div class="input-group">
+        <label for="numIndividuals">Number of Individuals (N):</label>
+        <input type="number" id="numIndividuals" value="3" min="1">
+        <br><br>
+        <label for="actionsInput">Actions (comma-separated):</label>
+        <input type="text" id="actionsInput" value="Action A, Action B">
+        <button onclick="setupInputs()">Update Setup</button>
+        <div class="info">Enter names for possible actions.</div>
+    </div>
+
+    <!-- Stochastic Specific Setup -->
+    <div id="stochasticSetup" class="input-group hidden">
+        <label for="statesInput">States of World (comma-separated):</label>
+        <input type="text" id="statesInput" value="State 1, State 2">
+        <button onclick="setupInputs()">Update Setup</button>
+        <div class="info">Enter possible outcomes/states of the world. Relevant only for Stochastic mode.</div>
+    </div>
+
+    <hr>
+
+    <!-- Dynamic Input Area -->
+    <h2>Inputs</h2>
+
+    <!-- Deterministic Utilities -->
+    <div id="deterministicInputs">
+        <h3>Individual Utilities: u<sub>i</sub>(a)</h3>
+        <div id="deterministicUtilityTableContainer"></div>
+        <div class="info">Enter the utility value each individual receives for each action.</div>
+    </div>
+
+    <!-- Stochastic Utilities & Probabilities -->
+    <div id="stochasticInputs" class="hidden">
+        <h3>State Probabilities: P(state | action)</h3>
+        <div id="probabilityTableContainer"></div>
+        <div class="info error" id="probabilityError"></div>
+        <div class="info">Enter the probability of each state occurring GIVEN each action. Probabilities for each action (row) MUST sum to 1.</div>
+
+        <h3>Individual Utilities per State: u<sub>i</sub>(a, state)</h3>
+        <div id="stochasticUtilityTablesContainer"></div>
+        <div class="info">Enter the utility value each individual receives for each action under each specific state.</div>
+    </div>
+
+
+    <button id="calculateBtn" onclick="calculateOptimalAction()">Calculate Optimal Action</button>
+
+    <div id="results" class="hidden">
+        <h3>Results</h3>
+        <div id="calculationDetails"></div>
+        <div id="optimalActionDisplay"></div>
+        <div class="error" id="calculationError"></div>
+    </div>
+
+</div> // End container
+
+<script>
+    let currentMode = 'deterministic';
+    let individuals = [];
+    let actions = [];
+    let states = []; // Only for stochastic
+
+    // --- Setup and UI Generation ---
+
+    function setupInputs() {
+        clearErrors();
+        // Read number of individuals
+        const numIndividualsInput = document.getElementById('numIndividuals');
+        const N = parseInt(numIndividualsInput.value);
+        if (isNaN(N) || N < 1) {
+            alert("Please enter a valid number of individuals (>= 1).");
+            numIndividualsInput.focus();
+            return;
+        }
+        individuals = Array.from({ length: N }, (_, i) => `Individual ${i + 1}`);
+
+        // Read actions
+        const actionsInput = document.getElementById('actionsInput').value.trim();
+        if (!actionsInput) {
+            alert("Please enter at least one action name.");
+            document.getElementById('actionsInput').focus();
+            return;
+        }
+        actions = actionsInput.split(',').map(a => a.trim()).filter(a => a);
+        if (actions.length === 0) {
+             alert("Please enter valid action names separated by commas.");
+             document.getElementById('actionsInput').focus();
+             return;
+        }
+
+
+        if (currentMode === 'stochastic') {
+            // Read states (only in stochastic mode)
+            const statesInput = document.getElementById('statesInput').value.trim();
+            if (!statesInput) {
+                alert("Please enter at least one state name for stochastic mode.");
+                 document.getElementById('statesInput').focus();
+                return;
+            }
+            states = statesInput.split(',').map(s => s.trim()).filter(s => s);
+             if (states.length === 0) {
+                alert("Please enter valid state names separated by commas.");
+                document.getElementById('statesInput').focus();
+                return;
+            }
+        } else {
+            states = []; // Clear states if in deterministic mode
+        }
+
+        generateInputTables();
+        console.log("Setup Updated:", { individuals, actions, states, currentMode });
+    }
+
+    function generateInputTables() {
+        if (currentMode === 'deterministic') {
+            generateDeterministicTable();
+        } else {
+            generateProbabilityTable();
+            generateStochasticUtilityTables();
+        }
+    }
+
+    function generateDeterministicTable() {
+        const container = document.getElementById('deterministicUtilityTableContainer');
+        let tableHTML = '<table><thead><tr><th>Individual</th>';
+        actions.forEach(action => {
+            tableHTML += `<th>${escapeHtml(action)}</th>`;
+        });
+        tableHTML += '</tr></thead><tbody>';
+
+        individuals.forEach((individual, i) => {
+            tableHTML += `<tr><td>${escapeHtml(individual)}</td>`;
+            actions.forEach((action, j) => {
+                // Use unique IDs for easy access
+                const inputId = `util_det_${i}_${j}`;
+                // Try to preserve existing value or default to 0
+                const existingInput = document.getElementById(inputId);
+                const value = existingInput ? existingInput.value : Math.floor(Math.random() * 21); // Default random value 0-20
+                tableHTML += `<td><input type="number" id="${inputId}" value="${value}" step="any"></td>`;
+            });
+            tableHTML += '</tr>';
+        });
+
+        tableHTML += '</tbody></table>';
+        container.innerHTML = tableHTML;
+    }
+
+    function generateProbabilityTable() {
+        const container = document.getElementById('probabilityTableContainer');
+        let tableHTML = '<table><thead><tr><th>Action</th>';
+        states.forEach(state => {
+            tableHTML += `<th>P(${escapeHtml(state)})</th>`;
+        });
+        tableHTML += '<th>Sum Check</th></tr></thead><tbody>'; // Add Sum Check column
+
+        const defaultProb = states.length > 0 ? (1 / states.length).toFixed(2) : 0;
+
+        actions.forEach((action, i) => {
+            tableHTML += `<tr><td>${escapeHtml(action)}</td>`;
+            states.forEach((state, j) => {
+                const inputId = `prob_${i}_${j}`;
+                const existingInput = document.getElementById(inputId);
+                const value = existingInput ? existingInput.value : defaultProb;
+                tableHTML += `<td><input type="number" id="${inputId}" value="${value}" step="0.01" min="0" max="1" oninput="updateProbabilitySum(${i})"></td>`;
+            });
+             // Add cell for sum display
+            tableHTML += `<td id="prob_sum_${i}"></td>`;
+            tableHTML += '</tr>';
+        });
+
+        tableHTML += '</tbody></table>';
+        container.innerHTML = tableHTML;
+
+        // Initial sum calculation for all rows
+        actions.forEach((_, i) => updateProbabilitySum(i));
+    }
+
+     // Function to update and display the sum of probabilities for a given action row
+    function updateProbabilitySum(actionIndex) {
+        let sum = 0;
+        let hasInvalid = false;
+        states.forEach((_, stateIndex) => {
+            const inputId = `prob_${actionIndex}_${stateIndex}`;
+            const inputElement = document.getElementById(inputId);
+            const value = parseFloat(inputElement.value);
+            if (isNaN(value) || value < 0 || value > 1) {
+                hasInvalid = true; // Mark if any input is invalid
+            } else {
+                 sum += value;
+            }
+        });
+
+        const sumCell = document.getElementById(`prob_sum_${actionIndex}`);
+        sumCell.textContent = sum.toFixed(2); // Display sum rounded to 2 decimal places
+
+        // Visual feedback for sum validation
+        if (hasInvalid) {
+             sumCell.style.color = 'orange';
+             sumCell.title = 'Contains non-numeric or out-of-range values (0-1).';
+        } else if (Math.abs(sum - 1.0) > 0.01) { // Allow for small floating point inaccuracies
+            sumCell.style.color = 'red';
+            sumCell.title = 'Sum does not equal 1.';
+        } else {
+            sumCell.style.color = 'green';
+            sumCell.title = 'Sum is approximately 1.';
+        }
+    }
+
+
+    function generateStochasticUtilityTables() {
+        const container = document.getElementById('stochasticUtilityTablesContainer');
+        container.innerHTML = ''; // Clear previous tables
+
+        actions.forEach((action, actionIndex) => {
+            let tableHTML = `<div class="stochastic-action-group"><h4>Utilities for: ${escapeHtml(action)}</h4>`;
+            tableHTML += '<table><thead><tr><th>Individual</th>';
+            states.forEach(state => {
+                tableHTML += `<th>Utility in ${escapeHtml(state)}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+
+            individuals.forEach((individual, indIndex) => {
+                tableHTML += `<tr><td>${escapeHtml(individual)}</td>`;
+                states.forEach((state, stateIndex) => {
+                    // Unique ID: util_sto_actionIndex_indIndex_stateIndex
+                    const inputId = `util_sto_${actionIndex}_${indIndex}_${stateIndex}`;
+                     const existingInput = document.getElementById(inputId);
+                    const value = existingInput ? existingInput.value : Math.floor(Math.random() * 21); // Default random value 0-20
+                    tableHTML += `<td><input type="number" id="${inputId}" value="${value}" step="any"></td>`;
+                });
+                tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table></div>';
+            container.innerHTML += tableHTML;
+        });
+    }
+
+    function switchMode() {
+        currentMode = document.querySelector('input[name="mode"]:checked').value;
+        const stochasticSetup = document.getElementById('stochasticSetup');
+        const deterministicInputs = document.getElementById('deterministicInputs');
+        const stochasticInputs = document.getElementById('stochasticInputs');
+
+        if (currentMode === 'deterministic') {
+            stochasticSetup.classList.add('hidden');
+            deterministicInputs.classList.remove('hidden');
+            stochasticInputs.classList.add('hidden');
+        } else {
+            stochasticSetup.classList.remove('hidden');
+            deterministicInputs.classList.add('hidden');
+            stochasticInputs.classList.remove('hidden');
+        }
+        // Regenerate tables for the new mode, preserving existing setup if possible
+        setupInputs();
+    }
+
+    // --- Calculation Logic ---
+
+    function calculateOptimalAction() {
+        clearErrors();
+        document.getElementById('results').classList.add('hidden'); // Hide previous results
+
+        try {
+            let totalUtilities = {}; // { actionName: totalUtilityValue }
+            if (currentMode === 'deterministic') {
+                totalUtilities = calculateDeterministic();
+            } else {
+                totalUtilities = calculateStochastic();
+            }
+
+            if (Object.keys(totalUtilities).length === 0) {
+                showError("No actions defined or calculation failed.");
+                return;
+            }
+
+            // Find the optimal action(s)
+            let maxUtility = -Infinity;
+            for (const action in totalUtilities) {
+                if (totalUtilities[action] > maxUtility) {
+                    maxUtility = totalUtilities[action];
+                }
+            }
+
+            const optimalActions = Object.keys(totalUtilities).filter(
+                action => Math.abs(totalUtilities[action] - maxUtility) < 1e-9 // Compare floats carefully
+            );
+
+            displayResults(totalUtilities, optimalActions, maxUtility);
+
+        } catch (error) {
+            showError(`Calculation Error: ${error.message}`);
+            console.error(error);
+        }
+    }
+
+    function calculateDeterministic() {
+        const totalUtilities = {};
+        actions.forEach((action, j) => {
+            let currentActionTotal = 0;
+            individuals.forEach((_, i) => {
+                const inputId = `util_det_${i}_${j}`;
+                const inputElement = document.getElementById(inputId);
+                if (!inputElement) throw new Error(`Missing input element: ${inputId}. Please click 'Update Setup'.`);
+                const utility = parseFloat(inputElement.value);
+                if (isNaN(utility)) {
+                    inputElement.style.borderColor = 'red';
+                    throw new Error(`Invalid utility value for ${individuals[i]} under ${action}.`);
+                } else {
+                     inputElement.style.borderColor = '#ccc'; // Reset border on valid input
+                }
+                currentActionTotal += utility;
+            });
+            totalUtilities[action] = currentActionTotal;
+        });
+        return totalUtilities;
+    }
+
+    function calculateStochastic() {
+        const expectedUtilities = {};
+
+        // 1. Read and validate probabilities
+        const probabilities = {}; // { actionIndex: { stateIndex: probability } }
+        let probabilitySumError = false;
+        actions.forEach((action, i) => {
+            probabilities[i] = {};
+            let actionProbSum = 0;
+            states.forEach((_, j) => {
+                const inputId = `prob_${i}_${j}`;
+                const inputElement = document.getElementById(inputId);
+                 if (!inputElement) throw new Error(`Missing probability input for Action ${action}, State ${states[j]}. Please click 'Update Setup'.`);
+                const prob = parseFloat(inputElement.value);
+                 if (isNaN(prob) || prob < 0 || prob > 1) {
+                    inputElement.style.borderColor = 'red';
+                    throw new Error(`Invalid probability for Action ${action}, State ${states[j]}. Must be between 0 and 1.`);
+                }
+                 inputElement.style.borderColor = '#ccc';
+                probabilities[i][j] = prob;
+                actionProbSum += prob;
+            });
+             // Validate sum for the action
+            if (Math.abs(actionProbSum - 1.0) > 0.01) {
+                 document.getElementById(`prob_sum_${i}`).style.color = 'red'; // Ensure visual cue remains
+                probabilitySumError = true;
+            }
+        });
+
+        if (probabilitySumError) {
+            throw new Error("Probabilities for one or more actions do not sum to 1. Please correct the values in the 'State Probabilities' table.");
+        }
+
+
+        // 2. Calculate Expected Utility for each action
+        actions.forEach((action, actionIndex) => {
+            let totalExpectedUtilityForAction = 0;
+            states.forEach((state, stateIndex) => {
+                let utilityInState = 0;
+                individuals.forEach((_, indIndex) => {
+                    const inputId = `util_sto_${actionIndex}_${indIndex}_${stateIndex}`;
+                     const inputElement = document.getElementById(inputId);
+                     if (!inputElement) throw new Error(`Missing utility input for Action ${action}, Individual ${individuals[indIndex]}, State ${state}. Please click 'Update Setup'.`);
+                    const utility = parseFloat(inputElement.value);
+                    if (isNaN(utility)) {
+                        inputElement.style.borderColor = 'red';
+                        throw new Error(`Invalid utility value for Action ${action}, Individual ${individuals[indIndex]}, State ${state}.`);
+                    }
+                    inputElement.style.borderColor = '#ccc';
+                    utilityInState += utility;
+                });
+                totalExpectedUtilityForAction += probabilities[actionIndex][stateIndex] * utilityInState;
+            });
+            expectedUtilities[action] = totalExpectedUtilityForAction;
+        });
+
+        return expectedUtilities;
+    }
+
+    // --- Display Logic ---
+
+    function displayResults(totalUtilities, optimalActions, maxUtility) {
+        const resultsDiv = document.getElementById('results');
+        const detailsDiv = document.getElementById('calculationDetails');
+        const optimalDiv = document.getElementById('optimalActionDisplay');
+
+        let detailsHTML = `<h4>${currentMode === 'deterministic' ? 'Total' : 'Expected Total'} Utility per Action:</h4><ul>`;
+        for (const action in totalUtilities) {
+            detailsHTML += `<li>${escapeHtml(action)}: ${totalUtilities[action].toFixed(2)}</li>`; // Show 2 decimal places
+        }
+        detailsHTML += '</ul>';
+        detailsDiv.innerHTML = detailsHTML;
+
+        let optimalText = `Optimal Action(s) (Maximizing Utility = ${maxUtility.toFixed(2)}): `;
+        optimalText += optimalActions.map(escapeHtml).join(', ');
+        optimalDiv.textContent = optimalText;
+
+
+        resultsDiv.classList.remove('hidden');
+    }
+
+    function showError(message) {
+        const errorDiv = document.getElementById('calculationError');
+        errorDiv.textContent = message;
+        // Optionally show the results div to display the error prominently
+        document.getElementById('results').classList.remove('hidden');
+        document.getElementById('calculationDetails').innerHTML = ''; // Clear details
+        document.getElementById('optimalActionDisplay').textContent = ''; // Clear optimal action
+    }
+
+     function clearErrors() {
+        document.getElementById('calculationError').textContent = '';
+        // Also clear probability sum error message
+         const probErrorDiv = document.getElementById('probabilityError');
+        if(probErrorDiv) probErrorDiv.textContent = '';
+         // Reset border colors on inputs (more robustly done during calculation attempt)
+    }
+
+
+    // --- Utility ---
+    function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return unsafe; // Handle non-strings gracefully
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
+    // --- Initial Setup on Load ---
+    window.onload = () => {
+        setupInputs(); // Initialize tables with default values
+    };
+
+</script>
+
+</body>
+</html>
